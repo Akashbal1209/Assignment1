@@ -1,6 +1,11 @@
 import yfinance as yf
 import pandas as pd
 import plotly.graph_objects as go
+import os
+
+# Create output directory for graphs
+output_dir = "stock_graphs"
+os.makedirs(output_dir, exist_ok=True)
 
 # NSE tickers
 stocks = {
@@ -69,17 +74,70 @@ for name, ticker in stocks.items():
 
 # Convert to DataFrame
 df = pd.DataFrame(results)
-print(df)
+print("\n" + "="*50)
+print("STOCK ANALYSIS RESULTS")
+print("="*50)
+print(df.to_string(index=False))
+print("="*50 + "\n")
 
 # Save to Excel
 df.to_excel("assignment1_stocks.xlsx", index=False)
+print(f"✓ Excel file saved: assignment1_stocks.xlsx")
 
-# --- Speedometer charts ---
+# --- Create and save speedometer charts ---
+print(f"\nGenerating speedometer charts...")
+
 for i, row in df.iterrows():
+    # Create speedometer figure
     fig = go.Figure(go.Indicator(
-        mode="gauge+number",
+        mode="gauge+number+delta",
         value=row["Overall Score"],
-        title={'text': row["Stock"]},
-        gauge={'axis': {'range': [0,100]}}
+        title={'text': f"{row['Stock']}<br><span style='font-size:0.8em'>Overall Score</span>", 
+               'font': {'size': 24}},
+        delta={'reference': 50, 'increasing': {'color': "green"}, 'decreasing': {'color': "red"}},
+        number={'suffix': "%", 'font': {'size': 40}},
+        gauge={
+            'axis': {'range': [0, 100], 'tickwidth': 1, 'tickcolor': "darkgray"},
+            'bar': {'color': "darkblue"},
+            'bgcolor': "white",
+            'borderwidth': 2,
+            'bordercolor': "gray",
+            'steps': [
+                {'range': [0, 33], 'color': '#ffcccc'},
+                {'range': [33, 66], 'color': '#ffffcc'},
+                {'range': [66, 100], 'color': '#ccffcc'}
+            ],
+            'threshold': {
+                'line': {'color': "red", 'width': 4},
+                'thickness': 0.75,
+                'value': row["Overall Score"]
+            }
+        }
     ))
+    
+    # Update layout for better appearance
+    fig.update_layout(
+        width=600,
+        height=450,
+        margin=dict(l=20, r=20, t=80, b=20),
+        font={'family': "Arial", 'size': 14}
+    )
+    
+    # Save as HTML (interactive)
+    html_filename = f"{output_dir}/{row['Stock'].replace(' ', '_')}_speedometer.html"
+    fig.write_html(html_filename)
+    
+    # Save as PNG (static image) - requires kaleido package
+    try:
+        png_filename = f"{output_dir}/{row['Stock'].replace(' ', '_')}_speedometer.png"
+        fig.write_image(png_filename)
+        print(f"✓ Saved: {png_filename}")
+    except Exception as e:
+        print(f"⚠ PNG save failed for {row['Stock']} (install kaleido: pip install kaleido)")
+        print(f"  HTML version saved: {html_filename}")
+    
+    # Show the figure
     fig.show()
+
+print(f"\n✓ All graphs saved in '{output_dir}' folder")
+print(f"✓ Analysis complete!")
